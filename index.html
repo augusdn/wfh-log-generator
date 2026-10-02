@@ -88,15 +88,12 @@
         </div>
       </section>
 
-      <section class="card" aria-labelledby="leave-title">
-        <div class="section-heading"><span>03</span><div><h2 id="leave-title">Leave periods</h2><p>Add annual or sick/personal leave. Overlapping and adjacent ranges are allowed; excluded work dates are de-duplicated.</p></div></div>
-        <div id="leave-periods" class="leave-periods"></div>
-        <button id="add-leave" type="button" class="secondary">Add leave period</button>
-        <small>Dates must be inside the selected financial year. Weekends, public holidays and other already-excluded dates do not count as excluded work dates.</small>
-      </section>
-
-      <section class="card" aria-labelledby="exceptions-title">
-        <div class="section-heading"><span>04</span><div><h2 id="exceptions-title">Date exceptions</h2><p>Add local closures or restore a bundled public holiday that you actually worked.</p></div></div>
+      <section class="card" aria-labelledby="adjustments-title">
+        <div class="section-heading"><span>03</span><div><h2 id="adjustments-title">Date adjustments</h2><p>Add periods or individual dates not worked, and explicit dates actually worked. A worked date always wins over weekends, public holidays, selected weekday exclusions, non-working periods and extra excluded dates.</p></div></div>
+        <h3>Non-working periods</h3>
+        <div id="non-working-periods" class="periods"></div>
+        <button id="add-period" type="button" class="secondary">Add non-working period</button>
+        <small>Multiple, overlapping and adjacent ranges are allowed and de-duplicated. Dates must be inside the selected financial year.</small>
         <div class="grid two">
           <div class="date-builder">
             <label for="exclude-date">Extra excluded date</label>
@@ -105,10 +102,10 @@
             <small>For example, a local show day or employer shutdown.</small>
           </div>
           <div class="date-builder">
-            <label for="include-date">Holiday include override</label>
-            <div class="inline"><input id="include-date" type="date"><button type="button" class="secondary" data-add="include">Add</button></div>
-            <ul id="include-list" class="chips" aria-label="Holiday include overrides"></ul>
-            <small>Only a bundled holiday in the selected state and financial year can be restored.</small>
+            <label for="worked-date">Worked date</label>
+            <div class="inline"><input id="worked-date" type="date"><button type="button" class="secondary" data-add="worked">Add</button></div>
+            <ul id="worked-list" class="chips" aria-label="Worked dates"></ul>
+            <small>Add any date actually worked inside the selected financial year, including a weekend or public holiday. Each date produces exactly one row and overrides every exclusion.</small>
           </div>
         </div>
         <details>
@@ -119,9 +116,9 @@
       </section>
 
       <section class="card" aria-labelledby="output-title">
-        <div class="section-heading"><span>05</span><div><h2 id="output-title">Reproducibility and output</h2><p>The same web seed and settings produce the same CSV bytes.</p></div></div>
+        <div class="section-heading"><span>04</span><div><h2 id="output-title">Reproducibility and output</h2><p>The same web seed and settings produce the same CSV bytes.</p></div></div>
         <div class="grid two">
-          <label>Integer seed <span class="optional">Optional</span><input id="seed" type="text" inputmode="numeric" placeholder="For example, 123"></label>
+          <label>Integer seed <span class="optional">Optional</span><input id="seed" type="text" inputmode="numeric" placeholder="Generated securely when blank" aria-describedby="seed-help"><small id="seed-help">If blank, Generate preview creates and displays a secure random uint32 seed so you can reproduce the result. Reset clears it.</small></label>
           <label>Output filename<input id="filename" type="text" value="synthetic-wfh-log.csv" maxlength="99" required></label>
         </div>
         <p class="caveat">This app uses a stable Mulberry32-based deterministic generator. It differs from Python's Mersenne Twister, so matching seed values do not produce byte-identical Python output.</p>
@@ -136,7 +133,7 @@
 
     <section id="results" class="results" aria-labelledby="results-title" hidden>
       <div class="results-head"><div><p class="eyebrow">PREVIEW</p><h2 id="results-title">Generated results</h2></div><p id="summary" aria-live="polite"></p></div>
-      <div id="leave-summary" class="result-panel"></div>
+      <div id="adjustment-summary" class="result-panel"></div>
       <div id="tax-estimate" class="result-panel tax-panel"></div>
       <div class="table-wrap" tabindex="0" aria-label="Generated CSV preview table">
         <table><thead><tr><th>Date</th><th>Day of Week</th><th>Start Time</th><th>End Time</th><th>Total Hours</th></tr></thead><tbody id="preview-body"></tbody></table>

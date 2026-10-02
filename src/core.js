@@ -1,8 +1,6 @@
 export const CSV_COLUMNS = ["Date", "Day of Week", "Start Time", "End Time", "Total Hours"];
 export const WEEKDAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 export const STATES = ["ACT", "NSW", "NT", "QLD", "SA", "TAS", "VIC", "WA"];
-export const LEAVE_TYPES = ["annual", "sick-personal"];
-export const LEAVE_LABELS = { annual: "Annual leave", "sick-personal": "Sick/personal leave" };
 export const FIXED_RATE_CENTS = new Map([[2020, 52], [2021, 52], [2022, 67], [2023, 67], [2024, 70], [2025, 70]]);
 
 // Optional, narrowly scoped closures belong here. They are never enabled by default.
@@ -121,19 +119,17 @@ function validateDateList(label, values, start, end, errors) {
   }
 }
 
-function validateLeavePeriods(rawPeriods, start, end, errors) {
+function validateNonWorkingPeriods(rawPeriods, start, end, errors) {
   return (rawPeriods || []).map((period, index) => {
     const number = index + 1;
-    const type = String(period.type || "");
     const from = String(period.start || "").trim();
     const to = String(period.end || "").trim();
-    if (!LEAVE_TYPES.includes(type)) errors.push(`Leave period ${number}: select a leave type.`);
-    if (!parseIsoDate(from)) errors.push(`Leave period ${number}: enter a valid start date.`);
-    else if (from < start || from > end) errors.push(`Leave period ${number}: start date ${from} is outside the selected financial year.`);
-    if (!parseIsoDate(to)) errors.push(`Leave period ${number}: enter a valid end date.`);
-    else if (to < start || to > end) errors.push(`Leave period ${number}: end date ${to} is outside the selected financial year.`);
-    if (parseIsoDate(from) && parseIsoDate(to) && from > to) errors.push(`Leave period ${number}: start date must be on or before end date.`);
-    return { type, start: from, end: to };
+    if (!parseIsoDate(from)) errors.push(`Non-working period ${number}: enter a valid start date.`);
+    else if (from < start || from > end) errors.push(`Non-working period ${number}: start date ${from} is outside the selected financial year.`);
+    if (!parseIsoDate(to)) errors.push(`Non-working period ${number}: enter a valid end date.`);
+    else if (to < start || to > end) errors.push(`Non-working period ${number}: end date ${to} is outside the selected financial year.`);
+    if (parseIsoDate(from) && parseIsoDate(to) && from > to) errors.push(`Non-working period ${number}: start date must be on or before end date.`);
+    return { start: from, end: to };
   });
 }
 
@@ -168,15 +164,9 @@ export function validateConfig(raw, holidayData) {
   const excludedWeekdays = new Set((raw.excludedWeekdays || []).map(Number));
   for (const day of excludedWeekdays) if (![1, 2, 3, 4, 5].includes(day)) errors.push("An excluded weekday value is invalid.");
   const extraExcluded = normalizeDateList(raw.extraExcluded || []);
-  const includedOverrides = normalizeDateList(raw.includedOverrides || []);
+  const workedDates = normalizeDateList(raw.workedDates || []);
   validateDateList("Extra excluded date", extraExcluded, start, end, errors);
-  validateDateList("Holiday include override", includedOverrides, start, end, errors);
-  const conflicts = extraExcluded.filter(date => includedOverrides.includes(date));
-  if (conflicts.length) errors.push(`A date cannot be both excluded and included: ${conflicts.join(", ")}`);
-  const stateHolidays = holidayData.states[raw.state] || {};
-  for (const date of includedOverrides) {
-    if (!(date in stateHolidays) || date < start || date > end) errors.push(`Holiday include override ${date} is not a bundled holiday for the selected state and financial year.`);
-  }
+  validateDateList("Worked date", workedDates, start, end, errors);
 
   const selectedOptionalHolidays = new Set(raw.optionalHolidays || []);
   for (const key of selectedOptionalHolidays) {
@@ -184,12 +174,12 @@ export function validateConfig(raw, holidayData) {
     if (!definition) errors.push(`Optional holiday ${key} is not supported.`);
     else if (definition.state !== raw.state) errors.push(`${definition.label} is available only when ${definition.state} is selected.`);
   }
-  const leavePeriods = validateLeavePeriods(raw.leavePeriods, start, end, errors);
+  const nonWorkingPeriods = validateNonWorkingPeriods(raw.nonWorkingPeriods, start, end, errors);
   if (errors.length) throw new ValidationError([...new Set(errors)]);
   return {
     state: raw.state, fy, start, end, durationBounds: bounds, earliest, latest, seed, filename,
-    excludedWeekdays, extraExcluded: new Set(extraExcluded), includedOverrides: new Set(includedOverrides),
-    optionalHolidays: selectedOptionalHolidays, leavePeriods,
+    excludedWeekdays, extraExcluded: new Set(extraExcluded), workedDates: new Set(workedDates),
+    optionalHolidays: selectedOptionalHolidays, nonWorkingPeriods,
   };
 }
 
@@ -210,17 +200,14 @@ export function optionalHolidayRows(config) {
   return rows.sort(([a], [b]) => a.localeCompare(b));
 }
 
-function leaveDateSets(config) {
-  const byType = Object.fromEntries(LEAVE_TYPES.map(type => [type, new Set()]));
-  const all = new Set();
-  for (const period of config.leavePeriods) {
+function nonWorkingDateSet(config) {
+  const dates = new Set();
+  for (const period of config.nonWorkingPeriods) {
     for (let current = parseIsoDate(period.start); isoDate(current) <= period.end; current.setUTCDate(current.getUTCDate() + 1)) {
-      const date = isoDate(current);
-      byType[period.type].add(date);
-      all.add(date);
+      dates.add(isoDate(current));
     }
   }
-  return { all, byType };
+  return dates;
 }
 
 export function fixedRateEstimate(totalMinutes, fy) {
@@ -229,27 +216,30 @@ export function fixedRateEstimate(totalMinutes, fy) {
   return { rateCents, amountCents: Math.round(totalMinutes * rateCents / 60) };
 }
 
-export function generate(config, holidayData, entropySeed = 0n) {
-  const seed = config.seed ?? entropySeed;
+export function generate(config, holidayData) {
+  if (config.seed === undefined) throw new ValidationError(["A seed is required. Generate one securely in the browser or enter an integer seed."]);
+  const seed = config.seed;
   const next = createPrng(seed);
   const holidayRows = holidaysFor(config, holidayData);
-  const effectiveHolidays = new Set(holidayRows.map(([date]) => date).filter(date => !config.includedOverrides.has(date)));
+  const holidayDates = new Set(holidayRows.map(([date]) => date));
   const scopedRows = optionalHolidayRows(config);
   const scopedDates = new Set(scopedRows.map(([date]) => date));
-  const leaveDates = leaveDateSets(config);
-  const excludedLeaveWorkDates = new Set();
-  const excludedLeaveByType = Object.fromEntries(LEAVE_TYPES.map(type => [type, new Set()]));
+  const nonWorkingDates = nonWorkingDateSet(config);
+  const excludedNonWorkingDates = new Set();
+  const workedOverrideDates = new Set();
   const rows = [];
   let totalMinutes = 0;
 
   for (let current = parseIsoDate(config.start); isoDate(current) <= config.end; current.setUTCDate(current.getUTCDate() + 1)) {
     const date = isoDate(current);
     const weekday = current.getUTCDay();
-    const unavailableBeforeLeave = weekday === 0 || weekday === 6 || config.excludedWeekdays.has(weekday) || effectiveHolidays.has(date) || scopedDates.has(date) || config.extraExcluded.has(date);
-    if (unavailableBeforeLeave) continue;
-    if (leaveDates.all.has(date)) {
-      excludedLeaveWorkDates.add(date);
-      for (const type of LEAVE_TYPES) if (leaveDates.byType[type].has(date)) excludedLeaveByType[type].add(date);
+    const weekend = weekday === 0 || weekday === 6;
+    const otherwiseExcluded = weekend || config.excludedWeekdays.has(weekday) || holidayDates.has(date) || scopedDates.has(date) || config.extraExcluded.has(date) || nonWorkingDates.has(date);
+    if (config.workedDates.has(date) && otherwiseExcluded) workedOverrideDates.add(date);
+    if (!config.workedDates.has(date) && otherwiseExcluded) {
+      if (nonWorkingDates.has(date) && !weekend && !config.excludedWeekdays.has(weekday) && !holidayDates.has(date) && !scopedDates.has(date) && !config.extraExcluded.has(date)) {
+        excludedNonWorkingDates.add(date);
+      }
       continue;
     }
     const startMinute = randomInteger(next, config.earliest, config.latest);
@@ -259,9 +249,11 @@ export function generate(config, holidayData, entropySeed = 0n) {
     totalMinutes += duration;
   }
   return {
-    rows, holidays: holidayRows, optionalHolidays: scopedRows, effectiveHolidayCount: effectiveHolidays.size,
-    optionalHolidayCount: scopedDates.size, leaveExcludedDates: [...excludedLeaveWorkDates].sort(),
-    leaveCounts: Object.fromEntries(LEAVE_TYPES.map(type => [type, excludedLeaveByType[type].size])),
+    rows, holidays: holidayRows, optionalHolidays: scopedRows,
+    effectiveHolidayCount: [...holidayDates].filter(date => !config.workedDates.has(date)).length,
+    optionalHolidayCount: [...scopedDates].filter(date => !config.workedDates.has(date)).length,
+    nonWorkingExcludedDates: [...excludedNonWorkingDates].sort(),
+    workedOverrideDates: [...workedOverrideDates].sort(),
     totalMinutes, seed,
   };
 }

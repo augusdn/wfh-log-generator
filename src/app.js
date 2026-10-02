@@ -1,13 +1,13 @@
 import { HOLIDAY_DATA } from "../data/holidays.js";
-import { LEAVE_LABELS, LEAVE_TYPES, ValidationError, fixedRateEstimate, formatFinancialYear, fyBounds, generate, toCsv, validateConfig } from "./core.js";
+import { ValidationError, fixedRateEstimate, formatFinancialYear, fyBounds, generate, toCsv, validateConfig } from "./core.js";
 
 const $ = id => document.getElementById(id);
 const form = $("generator");
 const errorSummary = $("error-summary");
 const excludedDates = [];
-const includedDates = [];
-let leavePeriods = [];
-let leaveSequence = 0;
+const workedDates = [];
+let nonWorkingPeriods = [];
+let periodSequence = 0;
 let currentOutput = null;
 
 const TEXT = Object.freeze({
@@ -28,9 +28,9 @@ function rawConfig() {
     seed: $("seed").value,
     filename: $("filename").value,
     extraExcluded: excludedDates,
-    includedOverrides: includedDates,
+    workedDates,
     optionalHolidays: $("nsw-bank-holiday").checked ? ["nsw-bank-holiday"] : [],
-    leavePeriods: leavePeriods.map(({ type, start, end }) => ({ type, start, end })),
+    nonWorkingPeriods: nonWorkingPeriods.map(({ start, end }) => ({ start, end })),
   };
 }
 
@@ -54,8 +54,8 @@ function showErrors(messages) {
 }
 
 function renderDateList(kind) {
-  const values = kind === "exclude" ? excludedDates : includedDates;
-  const list = kind === "exclude" ? $("exclude-list") : $("include-list");
+  const values = kind === "exclude" ? excludedDates : workedDates;
+  const list = kind === "exclude" ? $("exclude-list") : $("worked-list");
   list.replaceChildren();
   values.forEach((date, index) => {
     const item = document.createElement("li");
@@ -76,10 +76,10 @@ function renderDateList(kind) {
 }
 
 function addDate(kind) {
-  const input = kind === "exclude" ? $("exclude-date") : $("include-date");
-  const values = kind === "exclude" ? excludedDates : includedDates;
+  const input = kind === "exclude" ? $("exclude-date") : $("worked-date");
+  const values = kind === "exclude" ? excludedDates : workedDates;
   if (!input.value) {
-    showErrors([`Select a${kind === "exclude" ? "n extra excluded date" : " holiday include override"}.`]);
+    showErrors([`Select a${kind === "exclude" ? "n extra excluded date" : " worked date"}.`]);
     input.focus();
     return;
   }
@@ -93,32 +93,20 @@ function addDate(kind) {
 
 document.querySelectorAll("[data-add]").forEach(button => button.addEventListener("click", () => addDate(button.dataset.add)));
 
-function leaveBounds() {
+function periodBounds() {
   const fy = Number($("fy").value);
   return Number.isInteger(fy) ? fyBounds(fy) : ["", ""];
 }
 
-function renderLeavePeriods() {
-  const container = $("leave-periods");
+function renderNonWorkingPeriods() {
+  const container = $("non-working-periods");
   container.replaceChildren();
-  const [min, max] = leaveBounds();
-  leavePeriods.forEach((period, index) => {
+  const [min, max] = periodBounds();
+  nonWorkingPeriods.forEach((period, index) => {
     const row = document.createElement("fieldset");
-    row.className = "leave-row";
+    row.className = "period-row";
     const legend = document.createElement("legend");
-    legend.textContent = `Leave period ${index + 1}`;
-
-    const typeLabel = document.createElement("label");
-    typeLabel.textContent = "Leave type";
-    const type = document.createElement("select");
-    type.setAttribute("aria-label", `Leave period ${index + 1} type`);
-    for (const value of LEAVE_TYPES) {
-      const option = document.createElement("option");
-      option.value = value;
-      option.textContent = LEAVE_LABELS[value];
-      option.selected = period.type === value;
-      type.append(option);
-    }
+    legend.textContent = `Non-working period ${index + 1}`;
 
     const startLabel = document.createElement("label");
     startLabel.textContent = "Start date";
@@ -127,7 +115,7 @@ function renderLeavePeriods() {
     start.value = period.start;
     start.min = min;
     start.max = max;
-    start.setAttribute("aria-label", `Leave period ${index + 1} start date`);
+    start.setAttribute("aria-label", `Non-working period ${index + 1} start date`);
 
     const endLabel = document.createElement("label");
     endLabel.textContent = "End date";
@@ -136,42 +124,39 @@ function renderLeavePeriods() {
     end.value = period.end;
     end.min = min;
     end.max = max;
-    end.setAttribute("aria-label", `Leave period ${index + 1} end date`);
+    end.setAttribute("aria-label", `Non-working period ${index + 1} end date`);
 
     const remove = document.createElement("button");
     remove.type = "button";
-    remove.className = "ghost remove-leave";
+    remove.className = "ghost remove-period";
     remove.textContent = "Remove";
-    remove.setAttribute("aria-label", `Remove leave period ${index + 1}`);
+    remove.setAttribute("aria-label", `Remove non-working period ${index + 1}`);
 
     const update = () => {
-      period.type = type.value;
       period.start = start.value;
       period.end = end.value;
       invalidateOutput();
     };
-    type.addEventListener("change", update);
     start.addEventListener("input", update);
     end.addEventListener("input", update);
     remove.addEventListener("click", () => {
-      leavePeriods = leavePeriods.filter(item => item.id !== period.id);
-      renderLeavePeriods();
+      nonWorkingPeriods = nonWorkingPeriods.filter(item => item.id !== period.id);
+      renderNonWorkingPeriods();
       invalidateOutput();
     });
 
-    typeLabel.append(type);
     startLabel.append(start);
     endLabel.append(end);
-    row.append(legend, typeLabel, startLabel, endLabel, remove);
+    row.append(legend, startLabel, endLabel, remove);
     container.append(row);
   });
 }
 
-$("add-leave").addEventListener("click", () => {
-  leavePeriods.push({ id: ++leaveSequence, type: "annual", start: "", end: "" });
-  renderLeavePeriods();
+$("add-period").addEventListener("click", () => {
+  nonWorkingPeriods.push({ id: ++periodSequence, start: "", end: "" });
+  renderNonWorkingPeriods();
   invalidateOutput();
-  $("leave-periods").lastElementChild?.querySelector("select")?.focus();
+  $("non-working-periods").lastElementChild?.querySelector("input")?.focus();
 });
 
 function renderHolidays() {
@@ -195,8 +180,8 @@ function renderHolidays() {
     item.textContent = `${date} — ${name}`;
     list.append(item);
   }
-  for (const input of [$("exclude-date"), $("include-date")]) { input.min = start; input.max = end; }
-  renderLeavePeriods();
+  for (const input of [$("exclude-date"), $("worked-date")]) { input.min = start; input.max = end; }
+  renderNonWorkingPeriods();
 }
 
 function invalidateOutput() {
@@ -206,6 +191,7 @@ function invalidateOutput() {
 }
 
 function entropySeed() {
+  if (!globalThis.crypto?.getRandomValues) throw new ValidationError(["A secure random seed could not be generated in this browser. Enter an integer seed manually and try again."]);
   const bytes = new Uint32Array(1);
   crypto.getRandomValues(bytes);
   return BigInt(bytes[0]);
@@ -219,24 +205,23 @@ function appendTextElement(parent, tag, text, className = "") {
   return node;
 }
 
-function renderLeaveSummary(result) {
-  const panel = $("leave-summary");
+function renderAdjustmentSummary(result) {
+  const panel = $("adjustment-summary");
   panel.replaceChildren();
-  appendTextElement(panel, "h3", "Leave exclusions");
-  const counts = document.createElement("p");
-  counts.textContent = `${LEAVE_LABELS.annual}: ${result.leaveCounts.annual} · ${LEAVE_LABELS["sick-personal"]}: ${result.leaveCounts["sick-personal"]} · Unique excluded work dates: ${result.leaveExcludedDates.length}`;
-  panel.append(counts);
-  if (result.leaveExcludedDates.length) {
+  appendTextElement(panel, "h3", "Date adjustments");
+  appendTextElement(panel, "p", `${result.nonWorkingExcludedDates.length} work dates excluded by non-working periods · ${result.workedOverrideDates.length} worked dates overrode other exclusions`);
+  if (result.workedOverrideDates.length) appendTextElement(panel, "p", `Worked-date precedence applied to: ${result.workedOverrideDates.join(", ")}`, "date-list");
+  if (result.nonWorkingExcludedDates.length) {
     const details = document.createElement("details");
     const summary = document.createElement("summary");
-    summary.textContent = "Show excluded work dates";
+    summary.textContent = "Show dates excluded by non-working periods";
     const dates = document.createElement("p");
     dates.className = "date-list";
-    dates.textContent = result.leaveExcludedDates.join(", ");
+    dates.textContent = result.nonWorkingExcludedDates.join(", ");
     details.append(summary, dates);
     panel.append(details);
   } else {
-    appendTextElement(panel, "p", "No work dates were excluded by leave periods.", "caveat");
+    appendTextElement(panel, "p", "No otherwise-eligible work dates were excluded by non-working periods.", "caveat");
   }
 }
 
@@ -273,9 +258,9 @@ function renderResults(result, config) {
     tbody.append(tr);
   }
   const scoped = result.optionalHolidayCount ? ` · ${result.optionalHolidayCount} optional scoped holiday excluded` : "";
-  $("summary").textContent = `${formatFinancialYear(config.fy)} · ${result.rows.length} rows · ${(result.totalMinutes / 60).toFixed(2)} total hours · ${result.effectiveHolidayCount} public holidays excluded${scoped}`;
+  $("summary").textContent = `${formatFinancialYear(config.fy)} · seed ${result.seed} · ${result.rows.length} rows · ${(result.totalMinutes / 60).toFixed(2)} total hours · ${result.effectiveHolidayCount} public holidays excluded${scoped}`;
   $("preview-note").textContent = result.rows.length > 100 ? `Showing the first 100 rows for performance. The download contains all ${result.rows.length} rows.` : `Showing all ${result.rows.length} rows.`;
-  renderLeaveSummary(result);
+  renderAdjustmentSummary(result);
   renderTaxEstimate(result, config.fy);
   $("results").hidden = false;
 }
@@ -284,8 +269,9 @@ form.addEventListener("submit", event => {
   event.preventDefault();
   clearErrors();
   try {
+    if (!$("seed").value.trim()) $("seed").value = entropySeed().toString();
     const config = validateConfig(rawConfig(), HOLIDAY_DATA);
-    const result = generate(config, HOLIDAY_DATA, entropySeed());
+    const result = generate(config, HOLIDAY_DATA);
     if (result.rows.length === 0) throw new ValidationError([TEXT.noRows]);
     currentOutput = { csv: toCsv(result.rows), filename: config.filename };
     renderResults(result, config);
@@ -312,11 +298,11 @@ $("download").addEventListener("click", () => {
 form.addEventListener("reset", () => {
   setTimeout(() => {
     excludedDates.splice(0);
-    includedDates.splice(0);
-    leavePeriods = [];
+    workedDates.splice(0);
+    nonWorkingPeriods = [];
     renderDateList("exclude");
-    renderDateList("include");
-    renderLeavePeriods();
+    renderDateList("worked");
+    renderNonWorkingPeriods();
     clearErrors();
     invalidateOutput();
     renderHolidays();
@@ -325,6 +311,6 @@ form.addEventListener("reset", () => {
 
 for (const id of ["state", "fy"]) $(id).addEventListener("change", () => { renderHolidays(); invalidateOutput(); });
 form.addEventListener("input", event => {
-  if (!["state", "fy", "exclude-date", "include-date"].includes(event.target.id)) invalidateOutput();
+  if (!["state", "fy", "exclude-date", "worked-date"].includes(event.target.id)) invalidateOutput();
 });
 renderHolidays();
