@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ko">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -7,113 +7,126 @@
   <meta name="referrer" content="no-referrer">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'; media-src 'none'; worker-src 'none'">
   <meta name="color-scheme" content="light dark">
-  <title>호주 WFH 로그 생성기</title>
+  <title>Australian WFH Log Generator</title>
   <link rel="stylesheet" href="assets/styles.css">
   <script type="module" src="src/app.js"></script>
 </head>
 <body>
-  <a class="skip-link" href="#generator">입력 폼으로 건너뛰기</a>
+  <a class="skip-link" href="#generator">Skip to the form</a>
   <header class="hero">
     <div class="shell">
       <p class="eyebrow">CLIENT-ONLY · STATIC</p>
-      <h1>호주 WFH 로그 생성기</h1>
-      <p class="lede">회계연도와 주별 공휴일을 반영해 합성 재택근무 CSV를 만듭니다.</p>
+      <h1>Australian WFH Log Generator</h1>
+      <p class="lede">Create a synthetic work-from-home CSV using the selected financial year and state public holidays.</p>
       <div class="privacy-banner" role="note">
-        <strong>기기 안에서만 처리됩니다.</strong>
-        <span>입력값과 CSV는 서버로 전송·저장되지 않습니다. 분석 도구, 쿠키, 백엔드, 외부 요청이 없습니다. 단, 이 페이지와 소스 자체는 공개 URL입니다.</span>
+        <strong>Processed only in this tab.</strong>
+        <span>Form values and CSV data are not sent to or stored by a server. There are no analytics, cookies, accounts, backend requests or browser storage. This page and its source code are public.</span>
       </div>
     </div>
   </header>
 
   <main class="shell">
-    <noscript><p class="alert">이 도구를 사용하려면 JavaScript가 필요합니다.</p></noscript>
+    <noscript><p class="alert">JavaScript is required to use this tool.</p></noscript>
     <section class="warning" aria-labelledby="warning-title">
-      <h2 id="warning-title">합성·계획용 데이터</h2>
-      <p>생성 결과는 실제 근무, 급여 또는 세무 기록이 아닙니다. 제출·신고 전에 반드시 실제 고용 및 세무 기록과 대조해 확인하세요.</p>
+      <h2 id="warning-title">Synthetic planning data only</h2>
+      <p>Generated records are not verified employment, payroll, legal or tax evidence. Check every entry against actual contemporaneous records before use or submission.</p>
     </section>
 
     <div id="error-summary" class="error-summary" role="alert" aria-live="assertive" tabindex="-1" hidden></div>
 
     <form id="generator" novalidate>
       <section class="card" aria-labelledby="period-title">
-        <div class="section-heading"><span>01</span><div><h2 id="period-title">기간과 지역</h2><p>FY2025는 2025-07-01부터 2026-06-30까지입니다.</p></div></div>
+        <div class="section-heading"><span>01</span><div><h2 id="period-title">Period and location</h2><p>FY2025 means 1 July 2025 through 30 June 2026.</p></div></div>
         <div class="grid two">
-          <label>주/준주 <span aria-hidden="true">*</span>
+          <label>State or territory <span aria-hidden="true">*</span>
             <select id="state" name="state" required>
-              <option value="">선택</option><option>ACT</option><option>NSW</option><option>NT</option><option>QLD</option><option selected>SA</option><option>TAS</option><option>VIC</option><option>WA</option>
+              <option value="">Select</option><option>ACT</option><option>NSW</option><option>NT</option><option>QLD</option><option selected>SA</option><option>TAS</option><option>VIC</option><option>WA</option>
             </select>
           </label>
-          <label>회계연도 시작 연도 <span aria-hidden="true">*</span>
+          <label>Financial year start <span aria-hidden="true">*</span>
             <input id="fy" name="fy" type="number" min="2020" max="2035" step="1" value="2025" inputmode="numeric" required aria-describedby="fy-help">
-            <small id="fy-help">지원 범위: FY2020–FY2035</small>
+            <small id="fy-help">Supported range: FY2020–FY2035</small>
           </label>
         </div>
         <fieldset>
-          <legend>추가로 제외할 평일</legend>
+          <legend>Weekdays to exclude</legend>
           <div class="checks">
-            <label><input type="checkbox" name="weekday" value="1"> 월요일</label><label><input type="checkbox" name="weekday" value="2"> 화요일</label><label><input type="checkbox" name="weekday" value="3"> 수요일</label><label><input type="checkbox" name="weekday" value="4"> 목요일</label><label><input type="checkbox" name="weekday" value="5"> 금요일</label>
+            <label><input type="checkbox" name="weekday" value="1"> Monday</label><label><input type="checkbox" name="weekday" value="2"> Tuesday</label><label><input type="checkbox" name="weekday" value="3"> Wednesday</label><label><input type="checkbox" name="weekday" value="4"> Thursday</label><label><input type="checkbox" name="weekday" value="5"> Friday</label>
           </div>
-          <small>토요일과 일요일은 항상 제외됩니다.</small>
+          <small>Saturdays and Sundays are always excluded.</small>
         </fieldset>
+        <div id="nsw-bank-holiday-option" class="scoped-option" hidden>
+          <label><input id="nsw-bank-holiday" type="checkbox" value="nsw-bank-holiday"> NSW Bank Holiday (banks and certain financial institutions only)</label>
+          <small>Optional and off by default. This is the first Monday in August and is not a declared general public holiday. <a href="https://www.nsw.gov.au/about-nsw/public-holidays" target="_blank" rel="noopener noreferrer">Official NSW source</a>.</small>
+        </div>
       </section>
 
       <section class="card" aria-labelledby="hours-title">
-        <div class="section-heading"><span>02</span><div><h2 id="hours-title">근무시간 범위</h2><p>모든 시간은 1분 단위, 양 끝값 포함입니다.</p></div></div>
+        <div class="section-heading"><span>02</span><div><h2 id="hours-title">Working-time range</h2><p>All times use inclusive one-minute increments.</p></div></div>
         <div class="grid four">
-          <label>최소 근무시간<input id="min-hours" type="text" inputmode="decimal" value="8.5" required></label>
-          <label>최대 근무시간<input id="max-hours" type="text" inputmode="decimal" value="9.0" required></label>
-          <label>가장 이른 시작<input id="earliest" type="time" value="08:50" required></label>
-          <label>가장 늦은 시작<input id="latest" type="time" value="09:10" required></label>
+          <label>Minimum hours<input id="min-hours" type="text" inputmode="decimal" value="8.5" required></label>
+          <label>Maximum hours<input id="max-hours" type="text" inputmode="decimal" value="9.0" required></label>
+          <label>Earliest start<input id="earliest" type="time" value="08:50" required></label>
+          <label>Latest start<input id="latest" type="time" value="09:10" required></label>
         </div>
+      </section>
+
+      <section class="card" aria-labelledby="leave-title">
+        <div class="section-heading"><span>03</span><div><h2 id="leave-title">Leave periods</h2><p>Add annual or sick/personal leave. Overlapping and adjacent ranges are allowed; excluded work dates are de-duplicated.</p></div></div>
+        <div id="leave-periods" class="leave-periods"></div>
+        <button id="add-leave" type="button" class="secondary">Add leave period</button>
+        <small>Dates must be inside the selected financial year. Weekends, public holidays and other already-excluded dates do not count as excluded work dates.</small>
       </section>
 
       <section class="card" aria-labelledby="exceptions-title">
-        <div class="section-heading"><span>03</span><div><h2 id="exceptions-title">날짜 예외</h2><p>지역 휴무일이나 실제 근무한 공휴일을 조정하세요.</p></div></div>
+        <div class="section-heading"><span>04</span><div><h2 id="exceptions-title">Date exceptions</h2><p>Add local closures or restore a bundled public holiday that you actually worked.</p></div></div>
         <div class="grid two">
           <div class="date-builder">
-            <label for="exclude-date">추가 제외일</label>
-            <div class="inline"><input id="exclude-date" type="date"><button type="button" class="secondary" data-add="exclude">추가</button></div>
-            <ul id="exclude-list" class="chips" aria-label="추가 제외일 목록"></ul>
-            <small>지역 Show Day, 회사 휴무일 등을 추가하세요.</small>
+            <label for="exclude-date">Extra excluded date</label>
+            <div class="inline"><input id="exclude-date" type="date"><button type="button" class="secondary" data-add="exclude">Add</button></div>
+            <ul id="exclude-list" class="chips" aria-label="Extra excluded dates"></ul>
+            <small>For example, a local show day or employer shutdown.</small>
           </div>
           <div class="date-builder">
-            <label for="include-date">공휴일 포함 예외</label>
-            <div class="inline"><input id="include-date" type="date"><button type="button" class="secondary" data-add="include">추가</button></div>
-            <ul id="include-list" class="chips" aria-label="공휴일 포함 예외 목록"></ul>
-            <small>선택 지역·FY의 번들 공휴일만 포함으로 되돌릴 수 있습니다.</small>
+            <label for="include-date">Holiday include override</label>
+            <div class="inline"><input id="include-date" type="date"><button type="button" class="secondary" data-add="include">Add</button></div>
+            <ul id="include-list" class="chips" aria-label="Holiday include overrides"></ul>
+            <small>Only a bundled holiday in the selected state and financial year can be restored.</small>
           </div>
         </div>
         <details>
-          <summary>선택한 회계연도의 번들 공휴일 보기 (<span id="holiday-count">—</span>)</summary>
+          <summary>Bundled holidays in the selected financial year (<span id="holiday-count">—</span>)</summary>
           <ul id="holiday-list" class="holiday-list"></ul>
         </details>
-        <p class="caveat">공휴일 데이터는 python-holidays 0.105의 주 단위 달력과 observed 대체휴일을 번들로 포함합니다. NSW Bank Holiday는 일반 공휴일에서 제외했습니다. 지역·시·Show Day, 고용주 휴무, 향후 특별 공휴일/법령 변경은 빠질 수 있으므로 관할 공식 자료를 확인하세요.</p>
+        <p class="caveat">Bundled data uses python-holidays 0.105 state calendars with observed substitute dates. The NSW Bank Holiday is excluded from general holidays and offered separately only for NSW. Local, municipal and show days, employer closures, future special holidays or later legislative changes may be missing; verify official sources.</p>
       </section>
 
       <section class="card" aria-labelledby="output-title">
-        <div class="section-heading"><span>04</span><div><h2 id="output-title">재현성과 출력</h2><p>같은 웹 시드와 설정은 같은 CSV 바이트를 만듭니다.</p></div></div>
+        <div class="section-heading"><span>05</span><div><h2 id="output-title">Reproducibility and output</h2><p>The same web seed and settings produce the same CSV bytes.</p></div></div>
         <div class="grid two">
-          <label>정수 시드 <span class="optional">선택</span><input id="seed" type="text" inputmode="numeric" placeholder="예: 123"></label>
-          <label>출력 파일명<input id="filename" type="text" value="synthetic-wfh-log.csv" maxlength="99" required></label>
+          <label>Integer seed <span class="optional">Optional</span><input id="seed" type="text" inputmode="numeric" placeholder="For example, 123"></label>
+          <label>Output filename<input id="filename" type="text" value="synthetic-wfh-log.csv" maxlength="99" required></label>
         </div>
-        <p class="caveat">웹 앱은 안정적인 Mulberry32 기반 결정적 난수 생성기를 사용합니다. Python의 Mersenne Twister와 다르므로 같은 시드라도 Python 출력과 바이트 단위로 같지는 않습니다.</p>
+        <p class="caveat">This app uses a stable Mulberry32-based deterministic generator. It differs from Python's Mersenne Twister, so matching seed values do not produce byte-identical Python output.</p>
       </section>
 
       <div class="actions">
-        <button type="submit" class="primary">미리보기 생성</button>
-        <button id="download" type="button" class="secondary" disabled>CSV 다운로드</button>
-        <button id="reset" type="reset" class="ghost">초기화</button>
+        <button type="submit" class="primary">Generate preview</button>
+        <button id="download" type="button" class="secondary" disabled>Download CSV</button>
+        <button id="reset" type="reset" class="ghost">Reset</button>
       </div>
     </form>
 
     <section id="results" class="results" aria-labelledby="results-title" hidden>
-      <div class="results-head"><div><p class="eyebrow">PREVIEW</p><h2 id="results-title">생성 결과</h2></div><p id="summary" aria-live="polite"></p></div>
-      <div class="table-wrap" tabindex="0" aria-label="생성된 CSV 미리보기 표">
+      <div class="results-head"><div><p class="eyebrow">PREVIEW</p><h2 id="results-title">Generated results</h2></div><p id="summary" aria-live="polite"></p></div>
+      <div id="leave-summary" class="result-panel"></div>
+      <div id="tax-estimate" class="result-panel tax-panel"></div>
+      <div class="table-wrap" tabindex="0" aria-label="Generated CSV preview table">
         <table><thead><tr><th>Date</th><th>Day of Week</th><th>Start Time</th><th>End Time</th><th>Total Hours</th></tr></thead><tbody id="preview-body"></tbody></table>
       </div>
       <p id="preview-note" class="caveat"></p>
     </section>
   </main>
-  <footer class="shell"><p>공개 정적 도구 · 브라우저 메모리에서만 동작 · 데이터 자동 저장 없음</p></footer>
+  <footer class="shell"><p>Public static tool · current-tab memory only · no automatic storage · no analytics</p></footer>
 </body>
 </html>
