@@ -1,0 +1,10 @@
+.DS_Store
+.venv/
+node_modules/
+test-results/
+playwright-report/
+test-artifacts/
+*.log
+
+__pycache__/
+*.py[cod]
