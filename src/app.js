@@ -1,5 +1,5 @@
 import { HOLIDAY_DATA } from "../data/holidays.js";
-import { LEAVE_LABELS, LEAVE_TYPES, ValidationError, fixedRateEstimate, fyBounds, generate, toCsv, validateConfig } from "./core.js";
+import { LEAVE_LABELS, LEAVE_TYPES, ValidationError, fixedRateEstimate, formatFinancialYear, fyBounds, generate, toCsv, validateConfig } from "./core.js";
 
 const $ = id => document.getElementById(id);
 const form = $("generator");
@@ -245,10 +245,11 @@ function renderTaxEstimate(result, fy) {
   panel.replaceChildren();
   appendTextElement(panel, "h3", "Estimated WFH fixed-rate deduction");
   const estimate = fixedRateEstimate(result.totalMinutes, fy);
+  const financialYear = formatFinancialYear(fy);
   if (estimate) {
-    appendTextElement(panel, "p", `$${(estimate.amountCents / 100).toFixed(2)} · ${(estimate.rateCents / 100).toFixed(2)} AUD per hour · based on ${result.totalMinutes} generated minutes`);
+    appendTextElement(panel, "p", `${financialYear} · $${(estimate.amountCents / 100).toFixed(2)} · ${(estimate.rateCents / 100).toFixed(2)} AUD per hour · based on ${result.totalMinutes} generated minutes`);
   } else {
-    appendTextElement(panel, "p", `No amount shown: an official fixed rate for FY${fy} has not been published or verified by this app.`);
+    appendTextElement(panel, "p", `No amount shown for ${financialYear}: an official fixed rate has not been published or verified by this app.`);
   }
   appendTextElement(panel, "p", "A deduction is not a tax refund or tax saving. Eligibility requires additional running expenses, actual contemporaneous records of every WFH hour, and at least one record for each included expense. Expenses covered by the rate cannot also be claimed separately. Records generally need to be kept for five years. Synthetic data must be verified and may not satisfy ATO requirements.", "caveat");
   const source = document.createElement("a");
@@ -272,7 +273,7 @@ function renderResults(result, config) {
     tbody.append(tr);
   }
   const scoped = result.optionalHolidayCount ? ` · ${result.optionalHolidayCount} optional scoped holiday excluded` : "";
-  $("summary").textContent = `${result.rows.length} rows · ${(result.totalMinutes / 60).toFixed(2)} total hours · ${result.effectiveHolidayCount} public holidays excluded${scoped}`;
+  $("summary").textContent = `${formatFinancialYear(config.fy)} · ${result.rows.length} rows · ${(result.totalMinutes / 60).toFixed(2)} total hours · ${result.effectiveHolidayCount} public holidays excluded${scoped}`;
   $("preview-note").textContent = result.rows.length > 100 ? `Showing the first 100 rows for performance. The download contains all ${result.rows.length} rows.` : `Showing all ${result.rows.length} rows.`;
   renderLeaveSummary(result);
   renderTaxEstimate(result, config.fy);

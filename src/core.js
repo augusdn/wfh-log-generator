@@ -23,6 +23,14 @@ export class ValidationError extends Error {
 
 export function fyBounds(year) { return [`${year}-07-01`, `${year + 1}-06-30`]; }
 
+export function formatFinancialYear(year) {
+  if (!Number.isInteger(year)) throw new TypeError("Financial year start must be an integer.");
+  const endYear = year + 1;
+  return year >= 2020 && year <= 2035
+    ? `${year}–${String(endYear).slice(-2)}`
+    : `${year}–${endYear}`;
+}
+
 export function parseIsoDate(value) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
   const [y, m, d] = value.split("-").map(Number);
@@ -57,11 +65,11 @@ function parsePositiveDecimal(value, label, errors) {
 function ceilDiv(a, b) { return (a + b - 1n) / b; }
 
 export function durationBounds(minText, maxText, errors = []) {
-  const min = parsePositiveDecimal(minText, "Minimum hours", errors);
-  const max = parsePositiveDecimal(maxText, "Maximum hours", errors);
+  const min = parsePositiveDecimal(minText, "Minimum daily hours", errors);
+  const max = parsePositiveDecimal(maxText, "Maximum daily hours", errors);
   if (!min || !max) return null;
   if (min.numerator * max.denominator > max.numerator * min.denominator) {
-    errors.push("Minimum hours cannot be greater than maximum hours.");
+    errors.push("Minimum daily hours cannot be greater than maximum daily hours.");
     return null;
   }
   const minimum = Number(ceilDiv(min.numerator * 60n, min.denominator));

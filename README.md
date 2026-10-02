@@ -20,20 +20,21 @@ Do not enter personal information. The app needs only bounded configuration valu
 
 ## Behavior
 
-- `FY2025` means 2025-07-01 through 2026-06-30, inclusive.
+- Financial years use ATO-style labels: `2025–26` means 1 July 2025 through 30 June 2026, inclusive. The selector shows the full date range and supports only `2020–21` through `2035–36`; the internal value remains the numeric start year.
 - Monday–Friday are candidates; weekends are always skipped.
 - CSV columns remain exactly `Date, Day of Week, Start Time, End Time, Total Hours`.
-- Decimal-hour limits become an inclusive whole-minute range using `ceil(min × 60)` and `floor(max × 60)`.
+- For each eligible WFH day independently, duration is selected uniformly at whole-minute precision between the inclusive minimum and maximum. Decimal-hour limits become that whole-minute range using `ceil(min × 60)` and `floor(max × 60)`.
+- Start time is generated independently for each eligible day between the inclusive earliest and latest start times. Supplying an integer seed makes both generated sequences deterministic.
 - `Total Hours` is minute duration divided by 60, rounded to two decimals with half-up semantics.
 - A supplied integer seed is deterministic within this web app. The compact Mulberry32-based generator is intentionally not byte-identical to Python's Mersenne Twister.
-- The bundled public-holiday range is FY2020 through FY2035. Requests outside it fail closed.
-- Included-date overrides accept only a bundled holiday for the selected state and FY. Extra excluded dates support local or employer closures.
+- The bundled public-holiday range is `2020–21` through `2035–36`. Requests outside it fail closed.
+- Included-date overrides accept only a bundled holiday for the selected state and financial year. Extra excluded dates support local or employer closures.
 
 ## Optional scoped holiday
 
 The app has one optional scoped closure and does not invent any others:
 
-- **NSW Bank Holiday (banks and certain financial institutions only)** — shown and enabled only when NSW is selected, off by default, and calculated as the first Monday in August within the selected FY.
+- **NSW Bank Holiday (banks and certain financial institutions only)** — shown and enabled only when NSW is selected, off by default, and calculated as the first Monday in August within the selected financial year.
 
 The NSW Government states that retail bank branches and certain financial institutions are required to close on the first Monday in August unless exempt, and that this Bank Holiday is **not a declared public holiday**. Source: https://www.nsw.gov.au/about-nsw/public-holidays
 
@@ -42,7 +43,7 @@ The implementation keeps optional closures in a scoped definition registry so an
 ## Leave periods
 
 - Add any number of Annual leave or Sick/personal leave ranges.
-- Start and end dates must be valid, inside the selected FY, and start must be on or before end.
+- Start and end dates must be valid, inside the selected financial year, and start must be on or before end.
 - Overlapping and adjacent ranges are accepted. Work-date exclusion is de-duplicated.
 - Weekends, bundled public holidays, selected scoped holidays, excluded weekdays and extra excluded dates are not counted again as leave-excluded work dates.
 - Results report unique excluded work dates and per-type unique counts. If the same work date appears in both leave types, it is counted once in the overall total and once under each applicable type.
@@ -50,12 +51,12 @@ The implementation keeps optional closures in a scoped definition registry so an
 
 ## Estimated WFH fixed-rate deduction
 
-The result view, but never the CSV, shows `Estimated WFH fixed-rate deduction` using exact generated minutes divided by 60 and the verified ATO rate for the FY start-year:
+The result view, but never the CSV, shows `Estimated WFH fixed-rate deduction` using exact generated minutes divided by 60 and the verified ATO rate for the financial year's internal start year:
 
-- FY2020 and FY2021: 52 cents/hour
-- FY2022 and FY2023: 67 cents/hour
-- FY2024 and FY2025: 70 cents/hour
-- FY2026 and later: no amount until an official rate is published and verified
+- `2020–21` and `2021–22`: 52 cents/hour
+- `2022–23` and `2023–24`: 67 cents/hour
+- `2024–25` and `2025–26`: 70 cents/hour
+- `2026–27` and later: no amount until an official rate is published and verified
 
 The estimate is rounded to currency cents. A deduction is not a refund or tax saving, and no marginal-rate or refund estimate is made. Eligibility requires additional running expenses, actual contemporaneous records of every WFH hour, and at least one record for each included expense. Expenses covered by the fixed rate cannot also be claimed separately. Records generally need to be retained for five years. Synthetic data must be verified and may not satisfy ATO requirements.
 
@@ -91,7 +92,7 @@ npm run test:e2e
 
 Browser coverage runs in desktop Chromium and mobile WebKit. It includes English rendering, no external requests, state-scoped NSW Bank Holiday behavior, public-holiday overrides, repeatable leave add/remove/reset and overlap de-duplication, strict validation, deterministic download bytes, CSV privacy, tax-rate and unpublished-rate states, keyboard operation, mobile bounds and screenshots.
 
-The Node suite covers FY and date math, all subdivisions, representative and observed holidays, scoped closures, leave validation and de-duplication, exact minute and tax calculations, deterministic output, exact CSV bytes, English copy and static privacy controls.
+The Node suite covers financial-year and date math, all subdivisions, representative and observed holidays, scoped closures, leave validation and de-duplication, exact minute and tax calculations, deterministic output, exact CSV bytes, English copy and static privacy controls.
 
 ## Deployment
 

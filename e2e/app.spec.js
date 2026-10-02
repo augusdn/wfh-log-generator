@@ -27,9 +27,17 @@ test.beforeEach(async ({ page }) => {
 
 test("SA holiday override works and privacy copy is English", async ({ page }, testInfo) => {
   await expect(page.getByText("There are no analytics, cookies", { exact: false })).toBeVisible();
+  await expect(page.getByLabel("Financial year")).toHaveValue("2025");
+  await expect(page.getByLabel("Financial year").locator("option:checked")).toHaveText("2025–26 (1 Jul 2025 – 30 Jun 2026)");
+  await expect(page.getByRole("heading", { name: "Daily working-time generation" })).toBeVisible();
+  await expect(page.getByText("duration is selected independently and uniformly", { exact: false })).toBeVisible();
+  await expect(page.getByText("Start time is selected independently", { exact: false })).toBeVisible();
+  await expect(page.getByLabel("Minimum daily hours")).toHaveValue("8.5");
+  await expect(page.getByLabel("Maximum daily hours")).toHaveValue("9.0");
   await page.getByText(/Bundled holidays in the selected financial year/).click();
   await expect(page.getByText("2025-12-26 — Proclamation Day", { exact: true })).toBeVisible();
   await generate(page);
+  await expect(page.locator("#summary")).toContainText("2025–26");
   await expect(page.locator("#preview-body")).not.toContainText("2025-10-06");
 
   await page.locator("#include-date").fill("2025-10-06");
@@ -100,13 +108,12 @@ test("fixed-rate estimate uses generated minutes and unpublished years show no a
   await expect(tax).toContainText("not a tax refund or tax saving");
   await expect(tax).toContainText("five years");
 
-  const fy = page.getByLabel("Financial year start");
-  await fy.fill("2026");
-  await fy.press("Tab");
+  const fy = page.getByLabel("Financial year");
+  await fy.selectOption("2026");
   await expect(fy).toHaveValue("2026");
   await expect(page.locator("#results")).toBeHidden();
   await page.getByRole("button", { name: "Generate preview" }).click();
-  await expect(tax).toContainText("No amount shown");
+  await expect(tax).toContainText("No amount shown for 2026–27");
   await expect(tax).not.toContainText(/\$\d/);
 });
 

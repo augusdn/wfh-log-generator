@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { HOLIDAY_DATA } from "../data/holidays.js";
 import {
-  createPrng, durationBounds, fixedRateEstimate, fyBounds, generate, holidaysFor,
+  createPrng, durationBounds, fixedRateEstimate, formatFinancialYear, fyBounds, generate, holidaysFor,
   nthWeekdayOfMonth, optionalHolidayRows, parseIsoDate, toCsv, validateConfig, ValidationError,
 } from "../src/core.js";
 
@@ -15,6 +15,11 @@ const base = overrides => ({
 function config(overrides = {}) { return validateConfig(base(overrides), HOLIDAY_DATA); }
 
 test("FY start-year boundaries are exact", () => assert.deepEqual(fyBounds(2025), ["2025-07-01", "2026-06-30"]));
+test("financial years use ATO-style labels without ambiguous unsupported centuries", () => {
+  assert.equal(formatFinancialYear(2025), "2025–26");
+  assert.equal(formatFinancialYear(2035), "2035–36");
+  assert.equal(formatFinancialYear(2099), "2099–2100");
+});
 test("strict ISO dates reject impossible days", () => { assert.ok(parseIsoDate("2024-02-29")); assert.equal(parseIsoDate("2025-02-29"), null); });
 test("first Monday in August rule is deterministic", () => {
   assert.equal(nthWeekdayOfMonth(2025, 8, 1, 1), "2025-08-04");
